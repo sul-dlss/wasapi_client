@@ -13,7 +13,7 @@ Zeitwerk::Loader.for_gem.setup
 # Client for interacting with the Archive-It WASAPI APIs
 # WasapiClient.new(username: 'username', password: 'password').fetch_warcs(
 #   output_dir: 'path/to/save/warcs',
-#   collection: 'your_collection_id',
+#   collection: '12345',
 #   crawl_start_after: '2023-01-01',
 #   crawl_start_before: '2023-01-31'
 # )
