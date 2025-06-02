@@ -1,19 +1,19 @@
 # WasapiClient
 
-WasapiClient is a Ruby gem that acts as a client to Internet Archive's WASAPI APIs. It gets information about WARCs and downloads them. It is a successor to wasapi-downloader but is not provider-generic and is intended for use with Archive-it collections. 
+WasapiClient is a Ruby gem that acts as a client to Internet Archive's WASAPI APIs. It gets information about WARCs and downloads them. It is a successor to wasapi-downloader but is not provider-generic and is intended for use with Archive-It collections. 
 
 ## Installation
 
 Once the gem has been published, it will be possible to install the gem and add to the application's Gemfile by executing:
 
 ```
-bundle add globus_client
+bundle add wasapi_client
 ```
 
 If bundler is not being used to manage dependencies, install the gem by executing:
 
 ```
-gem install globus_client
+gem install wasapi_client
 ```
 
 ## Usage
