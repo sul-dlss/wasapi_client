@@ -1,10 +1,9 @@
 # frozen_string_literal: true
 
-require 'active_support/core_ext/object'
+require 'active_support'
 require 'faraday'
 require 'faraday/follow_redirects'
 require 'faraday/retry'
-require 'singleton'
 require 'zeitwerk'
 
 # Load the gem's internal dependencies: use Zeitwerk instead of needing to manually require classes
@@ -17,10 +16,9 @@ Zeitwerk::Loader.for_gem.setup
 #   crawl_start_after: '2023-01-01',
 #   crawl_start_before: '2023-01-31'
 # )
-# rubocop:disable Metrics/AbcSize, Metrics/MethodLength
 class WasapiClient
-  # @param username [String] the Archive-It account username
-  # @param password [String] the Archive-It account password
+  # @param username [String] an Archive-It account username
+  # @param password [String] an Archive-It account password
   def initialize(username:, password:)
     @username = username
     @password = password
@@ -42,22 +40,22 @@ class WasapiClient
   end
 
   # Send a GET request for the URLs for WARCs. Response will be paginated.
-  # @param collection [String] the collection ID to fetch WARC files for
+  # @param collection [String] the Archive-It collection ID to fetch WARC files for
   # @param crawl_start_after [String] the start date for the crawl in RFC3339 format
   # @param crawl_start_before [String] the end date for the crawl in RFC3339 format
   # @return [Array] the WARC URIs from the parsed JSON response
-  def get_locations(collection:, crawl_start_after:, crawl_start_before:)
+  def get_locations(collection:, crawl_start_after: nil, crawl_start_before: nil)
     params = {
       'collection': collection,
       'crawl-start-after': crawl_start_after,
-      'crawl-start-before': crawl_start_before,
-      'page': '1'
+      'crawl-start-before': crawl_start_before
     }
 
     response = query(params)
     files = response['files']
     return [] unless files.any?
 
+    # use the first (primary) location for each file since the second is a backup which may not be complete yet
     files.map! { |file| file['locations'].first }
 
     while response['next']
@@ -82,7 +80,7 @@ class WasapiClient
     response = connection(default_url).get('/wasapi/v1/webdata', params)
     raise "Failed to get list of WARCS: #{response.status}: #{response.body}" unless response.success?
 
-    return nil unless response.body.present?
+    return nil unless response.body
 
     JSON.parse(response.body)
   end
@@ -110,4 +108,3 @@ class WasapiClient
     end
   end
 end
-# rubocop:enable Metrics/AbcSize, Metrics/MethodLength

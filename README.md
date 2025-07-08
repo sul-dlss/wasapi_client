@@ -21,7 +21,7 @@ gem install wasapi_client
 Each Archive-It account has its own username and password for downloading WARCs. An account includes many collections, which each have a numeric id. Since we have many accounts, when making requests we need to provide the username and password for the account to which the Archive-It collection belongs. 
 
 ```ruby
-require wasapi_client'
+require 'wasapi_client'
 
 # NOTE: The settings below live in the consumer, not in the gem.
 WasapiClient.new(username: 'username', password: 'password').fetch_warcs(
