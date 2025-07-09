@@ -31,13 +31,28 @@ client.fetch_warcs(
   crawl_start_after: '2023-01-01',
   crawl_start_before: '2023-01-31'
 )
+
+client.fetch_file(
+  file: 'https://warcs.archive-it.org/webdatafile/ARCHIVEIT-123-example.warc.gz',
+  output_dir: 'path/to/save/warcs'
+)
+
+client.fetch_file(
+  file: 'ARCHIVEIT-123-example.warc.gz',
+  output_dir: 'path/to/save/warcs',
+  base_url: 'https://other-archive-it-location.org'
+)
+
+client.get_locations(
+  collection: '12345',
+  crawl_start_after: '2025-01-01',
+  crawl_start_before: '2025-06-30'
+)
 ```
 
 ## TODO
-* Unit tests
-* Download a single file by filename
-* Add store-time- params to support usage with backfill downloads (not in wasapi_downloader)
-* Support auditing
+* Further unit test coverage
+* Add store-time- params to support usage with backfill downloads
 
 
 ## Development

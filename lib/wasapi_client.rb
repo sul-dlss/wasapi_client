@@ -49,8 +49,8 @@ class WasapiClient
     return nil if locations.empty?
 
     FileUtils.mkdir_p(output_dir) unless Dir.exist?(output_dir)
-    locations.each do |url|
-      fetch_file(url:, output_dir:)
+    locations.each do |file|
+      fetch_file(file:, output_dir:)
     end
   end
 
@@ -67,46 +67,26 @@ class WasapiClient
     }
 
     response = query(params:)
-    extract_file_urls(response)
+    extract_files(response)
   end
 
-  # Fetch a specific file by URL from the collection's WARC locations
-  # @param collection [String] the Archive-It collection ID to fetch the file from
-  # @param url [String] the URL for the file
+  # Fetch a specific file from the WASAPI storage location.
+  # @param file [String] the URL or filename for the file
   # @param output_dir [String] the directory to save the file to
   # @return [String, nil] the path to the downloaded file, or nil if not found
-  def fetch_file(url:, output_dir:)
-    filepath = File.join(output_dir, File.basename(URI.parse(url).path))
-    FileUtils.mkdir_p(output_dir) unless Dir.exist?(output_dir)
+  def fetch_file(file:, output_dir:, base_url: default_storage_url)
+    # Determine if the input is a URL or a filename
+    file = URI.join(base_url, file).to_s unless file.start_with?('http')
 
-    download_by_url(url:, output_dir:)
-
-    raise "Failed to download file from #{url} to #{filepath}" unless File.exist?(filepath)
-
-    filepath
+    download(url: file, output_dir:)
   end
 
-  # Download a file by filename from the default WARC storage location
-  # @param filename [String] the name of the file to download
-  # @param output_dir [String] the directory to save the file to
-  # @param base_url [String] the base URL for WARC storage location
-  def fetch_file_by_filename(filename:, output_dir:, base_url: default_storage_url)
-    filepath = File.join(output_dir, filename)
-    FileUtils.mkdir_p(output_dir) unless Dir.exist?(output_dir)
-
-    download_by_filename(filename:, output_dir:, base_url:)
-
-    raise "Failed to download file #{filename} to #{filepath}" unless File.exist?(filepath)
-
-    filepath
-  end
-  
   private
 
   # Extract the WARC file locations from the response while paginating through results
   # @param response [Hash] the parsed JSON response from the WASAPI API
   # @return [Array] an array of WARC file locations (URLs)
-  def extract_file_urls(response)
+  def extract_files(response)
     files = response['files']
     return [] unless files.any?
 
@@ -141,10 +121,10 @@ class WasapiClient
     JSON.parse(response.body)
   end
 
-  # Download a file from a given URL and save it to the specified output directory
+  # Download a file and save it to the specified output directory
   # @param url [String] the URL of the file to download
   # @param output_dir [String] the directory to save the downloaded file to
-  def download_by_url(url:, output_dir:)
+  def download(url:, output_dir:)
     filename = File.basename(URI.parse(url).path)
     filepath = File.join(output_dir, filename)
     File.open(filepath, 'wb') do |file|
@@ -153,15 +133,7 @@ class WasapiClient
         req.options.on_data = proc { |chunk, _| file.write(chunk) }
       end
     end
-  end
 
-  # Download file by filename from the default WARC storage location.
-  # Used in audit and remediation where only the filename is available.
-  # @param filename [String] the name of the file to download
-  # @param output_dir [String] the directory to save the file to
-  # @param base_url [String] the base URL for WARC storage location
-  def download_by_filename(filename:, output_dir:, base_url: default_storage_url)
-    url = URI.join(base_url, filename).to_s
-    download_by_url(url:, output_dir:)
+    filepath
   end
 end
