@@ -56,4 +56,37 @@ RSpec.describe WasapiClient do
                               ])
     end
   end
+
+  describe '.fetch_warcs' do
+    let(:output_dir) { Dir.mktmpdir }
+    let(:locations) do
+      [
+        'https://example.com/warc1.warc.gz',
+        'https://example.com/warc2.warc.gz'
+      ]
+    end
+
+    before do
+      # stub download requests
+      locations.each do |url|
+        stub_request(:get, url)
+          .to_return(status: 200, body: "fake content for #{File.basename(url)}")
+      end
+    end
+
+    after do
+      FileUtils.remove_entry(output_dir)
+    end
+
+    it 'downloads WARC files to the specified directory' do
+      client.fetch_warcs(
+        collection: collection_id,
+        crawl_start_after: crawl_start_after,
+        crawl_start_before: crawl_start_before,
+        output_dir: output_dir
+      )
+
+      expect(Dir.entries(output_dir).select { |f| f.end_with?('.gz') }).to match_array(['warc1.warc.gz', 'warc2.warc.gz'])
+    end
+  end
 end

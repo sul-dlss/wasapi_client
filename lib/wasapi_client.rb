@@ -10,12 +10,6 @@ require 'zeitwerk'
 Zeitwerk::Loader.for_gem.setup
 
 # Client for interacting with the Archive-It WASAPI APIs
-# WasapiClient.new(username: 'username', password: 'password').fetch_warcs(
-#   output_dir: 'path/to/save/warcs',
-#   collection: '12345',
-#   crawl_start_after: '2023-01-01',
-#   crawl_start_before: '2023-01-31'
-# )
 class WasapiClient
   # @param username [String] an Archive-It account username
   # @param password [String] an Archive-It account password
@@ -52,10 +46,14 @@ class WasapiClient
     }
 
     response = query(params)
+    extract_files(response)
+  end
+
+  def extract_files(response)
     files = response['files']
     return [] unless files.any?
 
-    # use the first (primary) location for each file since the second is a backup which may not be complete yet
+    # use the first (primary) location for each file. The second is a backup which may not be complete when accessed.
     files.map! { |file| file['locations'].first }
 
     while response['next']
@@ -100,7 +98,7 @@ class WasapiClient
       filename = File.basename(URI.parse(url).path)
       filepath = File.join(output_dir, filename)
       File.open(filepath, 'wb') do |file|
-        # Use streaming to write the file in chunks
+        # Use streaming to write the file in chunks. WARCs can be large.
         connection(url).get do |req|
           req.options.on_data = proc { |chunk, _| file.write(chunk) }
         end
