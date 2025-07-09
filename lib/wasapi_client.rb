@@ -25,6 +25,10 @@ class WasapiClient
     'https://partner.archive-it.org'
   end
 
+  def default_storage_url
+    'https://warcs.archive-it.org/webdatafile/'
+  end
+
   # Set up an authenticated GET request for the account
   def connection(url)
     Faraday.new(url:) do |conn|
@@ -50,22 +54,6 @@ class WasapiClient
     end
   end
 
-  # Fetch a specific file by URL from the collection's WARC locations
-  # @param collection [String] the Archive-It collection ID to fetch the file from
-  # @param url [String] the URL for the file
-  # @param output_dir [String] the directory to save the file to
-  # @return [String, nil] the path to the downloaded file, or nil if not found
-  def fetch_file(url:, output_dir:)
-    filepath = File.join(output_dir, File.basename(URI.parse(url).path))
-    FileUtils.mkdir_p(output_dir) unless Dir.exist?(output_dir)
-
-    download_by_url(url:, output_dir:)
-
-    raise "Failed to download file from #{url} to #{filepath}" unless File.exist?(filepath)
-
-    filepath
-  end
-
   # Send a GET request for the URLs for WARCs. Response will be paginated.
   # @param collection [String] the Archive-It collection ID to fetch WARC files for
   # @param crawl_start_after [String] the start date for the crawl in RFC3339 format
@@ -82,12 +70,43 @@ class WasapiClient
     extract_file_urls(response)
   end
 
+  # Fetch a specific file by URL from the collection's WARC locations
+  # @param collection [String] the Archive-It collection ID to fetch the file from
+  # @param url [String] the URL for the file
+  # @param output_dir [String] the directory to save the file to
+  # @return [String, nil] the path to the downloaded file, or nil if not found
+  def fetch_file(url:, output_dir:)
+    filepath = File.join(output_dir, File.basename(URI.parse(url).path))
+    FileUtils.mkdir_p(output_dir) unless Dir.exist?(output_dir)
+
+    download_by_url(url:, output_dir:)
+
+    raise "Failed to download file from #{url} to #{filepath}" unless File.exist?(filepath)
+
+    filepath
+  end
+
+  # Download a file by filename from the default WARC storage location
+  # @param filename [String] the name of the file to download
+  # @param output_dir [String] the directory to save the file to
+  # @param base_url [String] the base URL for WARC storage location
+  def fetch_file_by_filename(filename:, output_dir:, base_url: default_storage_url)
+    filepath = File.join(output_dir, filename)
+    FileUtils.mkdir_p(output_dir) unless Dir.exist?(output_dir)
+
+    download_by_filename(filename:, output_dir:, base_url:)
+
+    raise "Failed to download file #{filename} to #{filepath}" unless File.exist?(filepath)
+
+    filepath
+  end
+  
   private
 
   # Extract the WARC file locations from the response while paginating through results
   # @param response [Hash] the parsed JSON response from the WASAPI API
   # @return [Array] an array of WARC file locations (URLs)
-  def extract_files(response)
+  def extract_file_urls(response)
     files = response['files']
     return [] unless files.any?
 
@@ -141,9 +160,8 @@ class WasapiClient
   # @param filename [String] the name of the file to download
   # @param output_dir [String] the directory to save the file to
   # @param base_url [String] the base URL for WARC storage location
-  def download_by_filename(filename:, output_dir:, base_url: nil)
-    download_base = base_url || 'https://warcs.archive-it.org/webdatafile/'
-    url = URI.join(download_base, filename).to_s
+  def download_by_filename(filename:, output_dir:, base_url: default_storage_url)
+    url = URI.join(base_url, filename).to_s
     download_by_url(url:, output_dir:)
   end
 end

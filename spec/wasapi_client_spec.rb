@@ -86,7 +86,29 @@ RSpec.describe WasapiClient do
         output_dir: output_dir
       )
 
-      expect(Dir.entries(output_dir).select { |f| f.end_with?('.gz') }).to match_array(['warc1.warc.gz', 'warc2.warc.gz'])
+      expect(Dir.entries(output_dir).select { |f| f.end_with?('.gz') })
+        .to match_array(['warc1.warc.gz', 'warc2.warc.gz'])
+    end
+  end
+
+  describe '.fetch_file' do
+    let(:output_dir) { Dir.mktmpdir }
+    let(:file_url) { 'https://example.com/warc1.warc.gz' }
+
+    before do
+      stub_request(:get, file_url)
+        .to_return(status: 200, body: 'fake content for warc1.warc.gz')
+    end
+
+    after do
+      FileUtils.remove_entry(output_dir)
+    end
+
+    it 'downloads a specific file by URL' do
+      filepath = client.fetch_file(url: file_url, output_dir: output_dir)
+
+      expect(filepath).to eq(File.join(output_dir, 'warc1.warc.gz'))
+      expect(File.exist?(filepath)).to be true
     end
   end
 end
