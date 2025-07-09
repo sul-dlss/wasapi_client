@@ -24,7 +24,8 @@ Each Archive-It account has its own username and password for downloading WARCs.
 require 'wasapi_client'
 
 # NOTE: The settings below live in the consumer, not in the gem.
-WasapiClient.new(username: 'username', password: 'password').fetch_warcs(
+client = WasapiClient.new(username: 'username', password: 'password')
+client.fetch_warcs(
   output_dir: 'path/to/save/warcs',
   collection: '12345',
   crawl_start_after: '2023-01-01',
@@ -35,7 +36,8 @@ WasapiClient.new(username: 'username', password: 'password').fetch_warcs(
 ## TODO
 * Unit tests
 * Download a single file by filename
-* Add store-time- params to support usage with backfill downloads
+* Add store-time- params to support usage with backfill downloads (not in wasapi_downloader)
+* Support auditing
 
 
 ## Development
