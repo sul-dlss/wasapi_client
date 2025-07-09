@@ -32,17 +32,20 @@ client.fetch_warcs(
   crawl_start_before: '2023-01-31'
 )
 
+# Fetch a single WARC with a URL
 client.fetch_file(
   file: 'https://warcs.archive-it.org/webdatafile/ARCHIVEIT-123-example.warc.gz',
   output_dir: 'path/to/save/warcs'
 )
 
+# Fetch a single WARC by filename (used when auditing/remediating)
 client.fetch_file(
   file: 'ARCHIVEIT-123-example.warc.gz',
   output_dir: 'path/to/save/warcs',
   base_url: 'https://other-archive-it-location.org'
 )
 
+# Get the URLs for WARCs meeting collection and crawl time criteria
 client.get_locations(
   collection: '12345',
   crawl_start_after: '2025-01-01',
