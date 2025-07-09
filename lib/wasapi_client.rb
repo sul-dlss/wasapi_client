@@ -13,6 +13,7 @@ Zeitwerk::Loader.for_gem.setup
 class WasapiClient
   # @param username [String] an Archive-It account username
   # @param password [String] an Archive-It account password
+  # @param base_url [String, nil] the base URL for the WASAPI API'
   def initialize(username:, password:, base_url: nil)
     @username = username
     @password = password
