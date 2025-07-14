@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'active_support'
+require 'active_support/core_ext/hash/indifferent_access'
 require 'faraday'
 require 'faraday/follow_redirects'
 require 'faraday/retry'
@@ -19,6 +20,8 @@ class WasapiClient
     @password = password
     @base_url = base_url
   end
+
+  NUM_RETRIES = 5
 
   attr_accessor :username, :password, :base_url
 
@@ -50,8 +53,17 @@ class WasapiClient
     return nil if locations.empty?
 
     FileUtils.mkdir_p(output_dir) unless Dir.exist?(output_dir)
-    locations.each do |file|
-      fetch_file(file:, output_dir:)
+    locations.each do |location|
+      filepath = fetch_file(file: location[:url], output_dir:)
+
+      retries = 0
+
+      until (valid = checksum_valid?(filepath:, expected_md5: location[:md5])) || retries >= NUM_RETRIES
+        filepath = fetch_file(file: location[:url], output_dir:)
+        retries += 1
+      end
+
+      raise "Failed to fetch a valid file for #{location[:url]} after #{NUM_RETRIES} retries" unless valid
     end
   end
 
@@ -59,7 +71,7 @@ class WasapiClient
   # @param collection [String] the Archive-It collection ID to fetch WARC files for
   # @param crawl_start_after [String] the start date for the crawl in RFC3339 format
   # @param crawl_start_before [String] the end date for the crawl in RFC3339 format
-  # @return [Array] the WARC URLs from the parsed JSON response
+  # @return [Array<Hash>] hashes containing WARC file location (URL) and md5 checksums from the parsed JSON response
   def get_locations(collection:, crawl_start_after: nil, crawl_start_before: nil)
     params = {
       'collection': collection,
@@ -80,19 +92,20 @@ class WasapiClient
     file = URI.join(base_url, file).to_s unless file.start_with?('http')
 
     download(url: file, output_dir:)
+    File.join(output_dir, File.basename(file))
   end
 
   private
 
   # Extract the WARC file locations from the response while paginating through results
   # @param response [Hash] the parsed JSON response from the WASAPI API
-  # @return [Array] an array of WARC file locations (URLs)
+  # @return [Array<Hash>] hashes containing WARC file location (URL) and md5 checksum
   def extract_files(response)
     files = response['files']
     return [] unless files.any?
 
     # use the first (primary) location for each file. The second is a backup which may not be complete when accessed.
-    files.map! { |file| file['locations'].first }
+    files.map! { |file| { url: file['locations'].first, md5: file&.dig('checksums', 'md5') } }
 
     while response['next']
       params['page'] = response['next']
@@ -100,10 +113,10 @@ class WasapiClient
       new_files = response['files']
       return [] unless new_files.any?
 
-      files << new_files.map! { |file| file['locations'].first }
+      files << new_files.map! { |file| { url: file['locations'].first, md5: file&.dig('checksums', 'md5') } }
     end
 
-    files.flatten
+    files
   end
 
   # Send a GET request for WARC files matching the query params
@@ -119,7 +132,7 @@ class WasapiClient
 
     return nil unless response.body
 
-    JSON.parse(response.body)
+    JSON.parse(response.body).with_indifferent_access
   end
 
   # Download a file and save it to the specified output directory
@@ -136,5 +149,13 @@ class WasapiClient
     end
 
     filepath
+  end
+
+  # Calculate the MD5 checksum of the downloaded file and verify it against the expected checksum
+  def checksum_valid?(filepath:, expected_md5:)
+    raise "No md5 checksum provided for #{File.basename(filepath)}" unless expected_md5
+
+    actual_md5 = Digest::MD5.file(filepath).hexdigest
+    actual_md5 == expected_md5
   end
 end

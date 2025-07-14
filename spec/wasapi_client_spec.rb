@@ -8,23 +8,26 @@ RSpec.describe WasapiClient do
   let(:crawl_start_before) { '2023-01-31' }
   let(:response_body) do
     {
-      "count": 2,
-      "next": nil,
-      "previous": nil,
+      'count' => 2,
+      'next' => nil,
+      'previous' => nil,
       'files' => [
         { 'filename' => 'warc1.warc.gz',
+          'checksums' => { 'md5' => md5_mock },
           'locations' => ['https://example.com/warc1.warc.gz', 'https://backup.example.com/warc1.warc.gz'],
-          "crawl-time": '2017-03-07T20:01:32Z',
-          "crawl-start": '2017-03-07T20:01:18Z',
-          "store-time": '2017-03-08T23:25:41Z' },
+          'crawl-time' => '2017-03-07T20:01:32Z',
+          'crawl-start' => '2017-03-07T20:01:18Z',
+          'store-time' => '2017-03-08T23:25:41Z' },
         { 'filename' => 'warc2.warc.gz',
+          'checksums' => { 'md5' => md5_mock },
           'locations' => ['https://example.com/warc2.warc.gz', 'https://backup.example.com/warc2.warc.gz'],
-          "crawl-time": '2017-03-07T20:01:32Z',
-          "crawl-start": '2017-03-07T20:01:18Z',
-          "store-time": '2017-03-08T23:25:41Z' }
+          'crawl-time' => '2017-03-07T20:01:32Z',
+          'crawl-start' => '2017-03-07T20:01:18Z',
+          'store-time' => '2017-03-08T23:25:41Z' }
       ]
     }
   end
+  let(:md5_mock) { 'md5' }
 
   before do
     stub_request(:get, "#{client.default_url}/wasapi/v1/webdata")
@@ -34,6 +37,7 @@ RSpec.describe WasapiClient do
               'crawl-start-before': crawl_start_before
             })
       .to_return(status: 200, body: response_body.to_json, headers: { 'Content-Type' => 'application/json' })
+    allow(Digest::MD5).to receive(:file).and_return(instance_double(Digest::MD5, hexdigest: md5_mock))
   end
 
   describe 'version' do
@@ -51,8 +55,10 @@ RSpec.describe WasapiClient do
       )
 
       expect(locations).to eq([
-                                'https://example.com/warc1.warc.gz',
-                                'https://example.com/warc2.warc.gz'
+                                { url: 'https://example.com/warc1.warc.gz',
+                                  md5: 'md5' },
+                                { url: 'https://example.com/warc2.warc.gz',
+                                  md5: 'md5' }
                               ])
     end
   end
@@ -67,10 +73,9 @@ RSpec.describe WasapiClient do
     end
 
     before do
-      # stub download requests
-      locations.each do |url|
-        stub_request(:get, url)
-          .to_return(status: 200, body: "fake content for #{File.basename(url)}")
+      locations.each do |location|
+        stub_request(:get, location)
+          .to_return(status: 200, body: "fake content for #{File.basename(location)}")
       end
     end
 
@@ -79,15 +84,68 @@ RSpec.describe WasapiClient do
     end
 
     it 'downloads WARC files to the specified directory' do
-      client.fetch_warcs(
-        collection: collection_id,
-        crawl_start_after: crawl_start_after,
-        crawl_start_before: crawl_start_before,
-        output_dir: output_dir
-      )
+      expect do
+        client.fetch_warcs(
+          collection: collection_id,
+          crawl_start_after: crawl_start_after,
+          crawl_start_before: crawl_start_before,
+          output_dir: output_dir
+        )
+      end.not_to raise_error
 
       expect(Dir.entries(output_dir).select { |f| f.end_with?('.gz') })
         .to match_array(['warc1.warc.gz', 'warc2.warc.gz'])
+    end
+
+    context 'when downloaded file does not have valid checksum' do
+      before do
+        allow(Digest::MD5).to receive(:file).and_return(instance_double(Digest::MD5, hexdigest: 'invalid checksum'))
+      end
+
+      it 'raises an error' do
+        expect do
+          client.fetch_warcs(
+            collection: collection_id,
+            crawl_start_after: crawl_start_after,
+            crawl_start_before: crawl_start_before,
+            output_dir: output_dir
+          )
+        end.to raise_error(RuntimeError,
+                           'Failed to fetch a valid file for https://example.com/warc1.warc.gz after 5 retries')
+      end
+    end
+
+    context 'when WASAPI response lacks md5 checksums' do
+      let(:response_body) do
+        {
+          "count": 1,
+          "next": nil,
+          "previous": nil,
+          'files' => [
+            { 'filename' => 'warc1.warc.gz',
+              'locations' => ['https://example.com/warc1.warc.gz', 'https://backup.example.com/warc1.warc.gz'],
+              'checksums' => { sha1: 'sha1' },
+              'crawl-time': '2017-03-07T20:01:32Z',
+              'crawl-start': '2017-03-07T20:01:18Z',
+              'store-time': '2017-03-08T23:25:41Z' }
+          ]
+        }
+      end
+      before do
+        stub_request(:get, "#{client.default_url}/wasapi/v1/webdata")
+          .to_return(status: 200, body: response_body.to_json, headers: { 'Content-Type' => 'application/json' })
+      end
+
+      it 'raises an error' do
+        expect do
+          client.fetch_warcs(
+            collection: collection_id,
+            crawl_start_after: crawl_start_after,
+            crawl_start_before: crawl_start_before,
+            output_dir: output_dir
+          )
+        end.to raise_error(RuntimeError, 'No md5 checksum provided for warc1.warc.gz')
+      end
     end
   end
 
