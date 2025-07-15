@@ -9,3 +9,4 @@ workflows:
       - ruby-rails/test-gem:
           name: test
           context: dlss
+          use-codecov: true

@@ -1,3 +1,6 @@
+[![CircleCI](https://dl.circleci.com/status-badge/img/gh/sul-dlss/wasapi_client/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/sul-dlss/wasapi_client/tree/main)
+[![codecov](https://codecov.io/gh/sul-dlss/wasapi_client/graph/badge.svg?token=O48G6RUM9K)](https://codecov.io/gh/sul-dlss/wasapi_client)
+
 # WasapiClient
 
 WasapiClient is a Ruby gem that acts as a client to Internet Archive's WASAPI APIs. It gets information about WARCs and downloads them. It is a successor to wasapi-downloader but is not provider-generic and is intended for use with Archive-It collections. 
@@ -54,7 +57,6 @@ client.get_locations(
 ```
 
 ## TODO
-* Further unit test coverage
 * Add store-time- params to support usage with backfill downloads
 
 
