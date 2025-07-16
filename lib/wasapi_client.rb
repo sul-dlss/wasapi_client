@@ -96,6 +96,16 @@ class WasapiClient
     download(url: file, output_dir:)
   end
 
+  # Send a GET request for WARCs filenames.
+  # @param collection [String] the Archive-It collection ID
+  # @param crawl_start_after [String] the start date for the crawl in RFC3339 format
+  # @param crawl_start_before [String] the end date for the crawl in RFC3339 format
+  # @return [Array<String>] WARC filenames
+  def filenames(collection:, crawl_start_after: nil, crawl_start_before: nil)
+    locations = get_locations(collection:, crawl_start_after:, crawl_start_before:)
+    locations.map { |location| File.basename(location[:url]) }
+  end
+
   private
 
   # Extract the WARC file locations and checksums from the response while paginating through results
