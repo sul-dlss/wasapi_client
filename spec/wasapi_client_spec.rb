@@ -308,4 +308,16 @@ RSpec.describe WasapiClient do
       end
     end
   end
+
+  describe '.filenames' do
+    it 'returns filenames for a collection and date range' do
+      filenames = client.filenames(
+        collection: collection_id,
+        crawl_start_after: crawl_start_after,
+        crawl_start_before: crawl_start_before
+      )
+
+      expect(filenames).to eq(['warc1.warc.gz', 'warc2.warc.gz'])
+    end
+  end
 end
