@@ -36,6 +36,7 @@ class WasapiClient
   # Set up an authenticated GET request for the account
   def connection(url)
     Faraday.new(url:) do |conn|
+      conn.use Faraday::Response::RaiseError
       conn.request :authorization, :basic, username, password
       conn.request :retry, max: 3, interval: 0.05, backoff_factor: 2
       conn.response :follow_redirects
@@ -162,10 +163,16 @@ class WasapiClient
     File.open(filepath, 'wb') do |file|
       # Use streaming to write the file in chunks. WARCs can be large.
       connection(url).get do |req|
-        req.options.on_data = proc { |chunk, _| file.write(chunk) }
+        req.options.on_data = proc do |chunk, _size, env|
+          if env.status >= 300
+            FileUtils.rm_f(filepath) if File.exist?(filepath)
+            raise "Failed to download file from #{url}: #{env.status}"
+          end
+
+          file.write(chunk)
+        end
       end
     end
-
     filepath
   end
 
