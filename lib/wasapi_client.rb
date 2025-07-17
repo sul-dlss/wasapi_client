@@ -164,7 +164,7 @@ class WasapiClient
       # Use streaming to write the file in chunks. WARCs can be large.
       connection(url).get do |req|
         req.options.on_data = proc do |chunk, _size, env|
-          if env.status >= 300
+          if env.status >= 400
             FileUtils.rm_f(filepath) if File.exist?(filepath)
             raise "Failed to download file from #{url}: #{env.status}"
           end
