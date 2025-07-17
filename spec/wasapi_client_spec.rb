@@ -307,6 +307,26 @@ RSpec.describe WasapiClient do
         expect(File.exist?(filepath)).to be true
       end
     end
+
+    context 'when file is not found' do
+      let(:file) { 'https://example.com/bogus.warc.gz' }
+
+      before do
+        stub_request(:get, file)
+          .to_return(status: 404, body: 'Not Found')
+      end
+
+      after do
+        FileUtils.remove_entry(output_dir)
+      end
+
+      it 'raises an error when the file is not found' do
+        expect do
+          client.fetch_file(file:, output_dir: output_dir)
+        end.to raise_error(RuntimeError, "Failed to download file from #{file}: 404")
+        expect(File.exist?(File.join(output_dir, 'bogus.warc.gz'))).to be false
+      end
+    end
   end
 
   describe '.filenames' do
